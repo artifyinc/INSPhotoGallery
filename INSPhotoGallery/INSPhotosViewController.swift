@@ -18,6 +18,7 @@
 //  limitations under the License.
 
 import UIKit
+import Photos
 
 public typealias INSPhotosViewControllerReferenceViewHandler = (_ photo: INSPhotoViewable) -> (UIView?)
 public typealias INSPhotosViewControllerNavigateToPhotoHandler = (_ photo: INSPhotoViewable) -> ()
@@ -141,13 +142,13 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
     }
     
     required public init?(coder aDecoder: NSCoder) {
-        dataSource = INSPhotosDataSource(photos: [])
+        dataSource = INSPhotosDataSource(photos: PHFetchResult())
         super.init(nibName: nil, bundle: nil)
         initialSetupWithInitialPhoto(nil)
     }
     
     public override init(nibName nibNameOrNil: String!, bundle nibBundleOrNil: Bundle!) {
-        dataSource = INSPhotosDataSource(photos: [])
+        dataSource = INSPhotosDataSource(photos: nil)
         super.init(nibName: nil, bundle: nil)
         initialSetupWithInitialPhoto(nil)
     }
@@ -161,7 +162,7 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
      
      - returns: A fully initialized object.
      */
-    public init(photos: [INSPhotoViewable], initialPhoto: INSPhotoViewable? = nil, referenceView: UIView? = nil) {
+    public init(photos: PHFetchResult<INSPhotoViewable>, initialPhoto: INSPhotoViewable? = nil, referenceView: UIView? = nil) {
         dataSource = INSPhotosDataSource(photos: photos)
         super.init(nibName: nil, bundle: nil)
         initialSetupWithInitialPhoto(initialPhoto)
@@ -239,7 +240,7 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
         
         if let photo = initialPhoto , dataSource.containsPhoto(photo) {
             changeToPhoto(photo, animated: false)
-        } else if let photo = dataSource.photos.first {
+        } else if let photo = dataSource.photos?.firstObject {
             changeToPhoto(photo, animated: false)
         }
     }

@@ -18,15 +18,20 @@
 //  limitations under the License.
 
 import Foundation
+import Photos
 
 public struct INSPhotosDataSource {
-    public private(set) var photos: [INSPhotoViewable] = []
+    public private(set) var photos: PHFetchResult<INSPhotoViewable>?
     
     public var numberOfPhotos: Int {
-        return photos.count
+        return photos?.count ?? 0
     }
     
     public func photoAtIndex(_ index: Int) -> INSPhotoViewable? {
+        guard let photos = photos else {
+            return nil
+        }
+        
         if (index < photos.count && index >= 0) {
             return photos[index];
         }
@@ -34,7 +39,7 @@ public struct INSPhotosDataSource {
     }
     
     public func indexOfPhoto(_ photo: INSPhotoViewable) -> Int? {
-        return photos.firstIndex(where: { $0 === photo})
+        return photos?.index(of: photo)
     }
 
     public func containsPhoto(_ photo: INSPhotoViewable) -> Bool {
@@ -43,7 +48,7 @@ public struct INSPhotosDataSource {
     
     public mutating func deletePhoto(_ photo: INSPhotoViewable){
         if let index = self.indexOfPhoto(photo){
-            photos.remove(at: index)
+//            photos.remove(at: index)
         }
     }
     
