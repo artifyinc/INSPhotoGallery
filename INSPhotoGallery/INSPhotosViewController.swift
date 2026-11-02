@@ -130,10 +130,6 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
         return nil
     }
     
-    private func orientationMaskSupportsOrientation(mask: UIInterfaceOrientationMask, orientation: UIInterfaceOrientation) -> Bool {
-        return (mask.rawValue & (1 << orientation.rawValue)) != 0
-    }
-    
     // MARK: - Initialization
     
     deinit {
@@ -201,7 +197,10 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
         view.backgroundColor = UIColor.black
         pageViewController.view.backgroundColor = UIColor.clear
         
-        pageViewController.view.addGestureRecognizer(panGestureRecognizer)
+        // On the root view so a drag that starts over the overlay bars or the play button also dismisses.
+        panGestureRecognizer.maximumNumberOfTouches = 1
+        panGestureRecognizer.delegate = self
+        view.addGestureRecognizer(panGestureRecognizer)
         pageViewController.view.addGestureRecognizer(singleTapGestureRecognizer)
         
         addChild(pageViewController)
@@ -301,15 +300,11 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
     
     // MARK: - Gesture Recognizers
     
+    // Swipe-down-to-dismiss like the system Photos app. The pan only begins for a downward,
+    // mostly vertical drag on an unzoomed photo (see gestureRecognizerShouldBegin), so paging,
+    // zoomed scrolling and swiping up keep working. The old orientation guard read the deprecated
+    // statusBarOrientation, which is not reliable in UIScene apps and blocked the gesture entirely.
     @objc private func handlePanGestureRecognizer(_ gestureRecognizer: UIPanGestureRecognizer) {
-        
-        // if current orientation is different from supported orientations of presenting vc, disable flick-to-dismiss
-        if let presentingViewController = presentingViewController {
-            if !orientationMaskSupportsOrientation(mask: presentingViewController.supportedInterfaceOrientations, orientation: UIApplication.shared.statusBarOrientation) {
-                return
-            }
-        }
-        
         if gestureRecognizer.state == .began {
             interactiveDismissal = true
             dismiss(animated: true, completion: nil)
@@ -488,3 +483,31 @@ open class INSPhotosViewController: UIViewController, UIPageViewControllerDataSo
     }
 }
 
+
+// MARK: - Swipe down to dismiss
+
+extension INSPhotosViewController: UIGestureRecognizerDelegate {
+    open func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === panGestureRecognizer else {
+            return true
+        }
+        guard presentedViewController == nil, !isBeingDismissed, view.window != nil else {
+            return false
+        }
+        if let scrollView = currentPhotoViewController?.scalingImageView, INSPhotosSwipeToDismiss.isZoomedIn(zoomScale: scrollView.zoomScale, minimumZoomScale: scrollView.minimumZoomScale) {
+            return false
+        }
+        return INSPhotosSwipeToDismiss.shouldBegin(velocity: panGestureRecognizer.velocity(in: view))
+    }
+}
+
+extension INSPhotosViewController {
+    // A rotation or window resize in the middle of a drag would leave the photo off-center; cancel the drag instead.
+    open override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        if panGestureRecognizer.state == .began || panGestureRecognizer.state == .changed {
+            panGestureRecognizer.isEnabled = false
+            panGestureRecognizer.isEnabled = true
+        }
+    }
+}
